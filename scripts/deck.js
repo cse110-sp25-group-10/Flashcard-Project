@@ -56,6 +56,14 @@ export const Deck = function createDeck(deckName) {
          * @returns Returns true if the card was added and false otherwise
          */
         addCard(card) {
+
+            // Null check
+            if(card === null || card === undefined)
+            {
+                console.error("Card is not valid");
+                return false;
+            }
+
             // Validate the card
             if (
                 typeof card !== "object" ||
@@ -119,6 +127,13 @@ export const Deck = function createDeck(deckName) {
          * @returns {boolean} - Returns true if the card was updated successfully, false otherwise
          */
         updateCard(index, newCard) {
+
+            // Check if null
+            if(newCard === null || newCard === undefined)
+            {
+                console.error("newCard is not valid.");
+                return false;
+            }
             // Validate the index
             if (index < 0 || index >= this.cards.length) {
                 console.error("Invalid index for updateCard.");
