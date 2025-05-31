@@ -1,3 +1,104 @@
 :root {
-    --max-width: 70rem;
+    /** Color Variables */
+    --white:  rgb(241 236 254);
+    --light-blue: rgb(176 202 227);
+    --lilac: rgb(229 201 228);
+    --navy: rgb(19 16 45);
+    --black: rgb(0 0 0);
+    --white-transparent: rgb(241 236 254 / 80%);
+}
+
+body {
+    font-family: Arial, sans-serif;
+    color: var(--white);
+    margin: auto;
+    place-items: center;
+    padding: 5rem;
+    background-color: var(--navy); /** In case background img doesn't load */
+    background-image: url("../10xCardsBG.png");
+    background-attachment: fixed;
+}
+
+.flash-card-container {
+    background-color: var(--light-blue);
+    border-radius: 20px;
+    display: flex;
+    gap: 15px;
+    width: 80vw;
+    height: 50vh;
+    justify-content: left;
+    align-items: center;
+    padding-left: 15px;
+}
+
+.speech {
+    background-color: var(--white);
+    color: var(--black);
+    border: solid var(--white);
+    border-radius: 20px;
+    width: 20vw;
+    height: 45vh;
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 2em;
+}
+
+.add-speech {
+    display: flex;
+    background-color: var(--white);
+    color: var(--black);
+    border: solid var(--white);
+    border-radius: 100px;
+    width: 75px; 
+    height: 75px;
+    justify-content: center;
+    align-items: center;
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 5em;
+}
+
+.bottom {
+    display: flex;
+    gap: 50px;  
+    justify-content: center;
+    padding-top: 15px;
+}
+
+#edit-speech-button {
+    background-color: var(--white-transparent);
+    color: var(--black);
+    border-radius: 10px;
+    width: 20vw;
+    height: 7vh;
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 2em;
+}
+
+#study-button {
+    background-color: var(--white-transparent);
+    color: var(--black);
+    border-radius: 10px;
+    width: 20vw;
+    height: 7vh;
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 2em;
+}
+
+#delete-speech-button {
+    background-color: var(--white-transparent);
+    color: var(--black);
+    border-radius: 10px;
+    width: 20vw;
+    height: 7vh;
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 2em;
 }

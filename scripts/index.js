@@ -1,8 +1,11 @@
 import "./screens/HomeScreen.js";
 import "./screens/CreateScreen.js";
+import "./screens/ExistingScreen.js"
 import "./components/CardPreview.js";
+import "./components/DeckPreview.js";
+import "./screens/DeckScreen.js"
 import { Deck, Card } from "./deck.js";
-import { saveDeck, getAllDecks, deleteDeckDB } from "./database.js";
+import { saveDeck, getAllDecks } from "./database.js";
 import "./components/ConfirmationModal.js";
 
 window.addEventListener("DOMContentLoaded", init);
@@ -11,6 +14,7 @@ window.addEventListener("DOMContentLoaded", init);
 const appState = {
     decks: {}, // Stores Deck instances, keyed by deckName: { "deckName1": deckInstance1, ... }
     currentDeckInCreation: null, // Holds the Deck object while it's being built in CreateScreen
+    previousScreen: "home"
 };
 
 function init() {
@@ -46,8 +50,9 @@ function init() {
         }
 
         // Get references to the buttons within the home screen
-        const createDeck = document.querySelector(".create-deck");
-        const existingDecks = document.querySelector(".existing-decks");
+        const shadowRoot = homeScreen.shadowRoot;
+        const createDeck = shadowRoot.querySelector(".create-deck");
+        const existingDecks = shadowRoot.querySelector(".existing-decks");
 
         // Add event listeners
         createDeck.addEventListener("click", swapToCreate);
@@ -57,6 +62,7 @@ function init() {
          * Swap to the deck creation screen
          */
         function swapToCreate() {
+            appState.previousScreen = "home";
             clearEvents();
             initCreate();
         }
@@ -65,6 +71,7 @@ function init() {
          * Swap to the existing decks screen
          */
         function swapToExisting() {
+            appState.previousScreen = "home";
             clearEvents();
             initExisting();
         }
@@ -80,15 +87,13 @@ function init() {
 
     /**
      * Swap to the deck creation screen
+     * @param {Number} editIndex The index if a specific card is edited, -1 otherwise
      */
-    function initCreate() {
+    function initCreate(editIndex = -1) {
         // TODO: Set up creation screen implementation
         flashcardApp.replaceChildren();
         const createScreen = document.createElement("create-screen");
         flashcardApp.appendChild(createScreen);
-
-        // Reset any previously half created deck
-        appState.currentDeckInCreation = null;
 
         // Get references to buttons
         const saveBtn = flashcardApp.querySelector("#save-button");
@@ -109,16 +114,37 @@ function init() {
         cardForm.addEventListener("submit", handleCardSubmit);
         speechForm.addEventListener("submit", handleDeckNameSubmit);
         saveBtn.addEventListener("click", handleSaveDeckAndGoHome);
-        backBtn.addEventListener("click", swapToHome);
+        backBtn.addEventListener("click", swapToPrevScreen);
+        cardList.addEventListener("delete-card", deleteCard);
+        cardList.addEventListener("edit-card", editCard);
+
+        let editingState = editIndex;
+
+        initExistingCards();
+        if (editingState !== -1) {
+            console.log(cardList.children[editingState]);
+            editCard(
+                new CustomEvent("edit-card", {
+                    detail: cardList.children[editingState],
+                })
+            );
+        }
 
         /**
          * Swap to the home screen
          */
-        function swapToHome() {
-            // TODO: Save the deck
-            clearEvents();
-            initHome();
-            console.log("Swapped to home screen");
+        function swapToPrevScreen() {
+            if (appState.previousScreen === "deck") {
+                const deckName = appState.currentDeckInCreation.deckName;
+                clearEvents();
+                initDeckViewScreen(new CustomEvent("deck-select", {
+                    detail: deckName,
+                    bubbles: false
+                }));                
+            } else {
+                clearEvents();
+                initHome();
+            }
         }
 
         /**
@@ -127,7 +153,7 @@ function init() {
          */
         async function handleCardSubmit(event) {
             event.preventDefault();
-
+            // TODO: Use validation techniques instead of alert
             if (!appState.currentDeckInCreation) {
                 alert("Please set a deck name first using the 'Name your Speech' form.");
                 return;
@@ -145,31 +171,57 @@ function init() {
 
             // Attempt to create a new card using given values
             const newCard = Card(frontText, backText, timeNum);
-            // If a card is successfully created (i.e. not null), add it to the deck
+            // TODO: Use validation techniques instead of alert
+            // If a card is successfully created (i.e. not null), add it to the deck if we're creating a card or override the card at the specified index
             if (newCard !== null) {
-                const added = appState.currentDeckInCreation.addCard(newCard);
-                // If a card is successfully added to the deck, render it in the preview
-                if (added) {
-                    const newPreview = document.createElement("card-preview");
-                    newPreview.setAttribute("data-front-text", frontText);
-                    newPreview.setAttribute("data-back-text", backText);
-                    cardList.appendChild(newPreview);
-                    front.value = "";
-                    back.value = "";
-                    time.value = "";
-
-                    try {
+                if (editingState >= 0) {
+                    const updated = appState.currentDeckInCreation.updateCard(editingState, newCard);
+                    if (updated) {
+                        // Create a new card component with the new values
+                        const newPreview = document.createElement("card-preview");
+                        newPreview.setAttribute("data-front-text", frontText);
+                        newPreview.setAttribute("data-back-text", backText);
+                        newPreview.setAttribute("data-time", timeNum);
+                        // Clear the data in the form
+                        front.value = "";
+                        back.value = "";
+                        time.value = "";
+                        // Replace the existing card in the DOM
+                        cardList.children[editingState].replaceWith(newPreview);
+                        // Reset the state to -1 (indicating that we are back to creating new cards)
+                        editingState = -1;
+                        // Save the deck
                         await saveDeck(appState.currentDeckInCreation);
-                        console.log(
-                            `Deck "${appState.currentDeckInCreation.deckName}" saved after adding card.`
-                        );
-                    } catch (error) {
-                        console.error("Error saving deck after adding card:", error);
-                        alert("Error saving deck. Changes may not be persisted.");
                     }
                 } else {
-                    alert("Failed to add card to deck (internal validation).");
-                }
+                    const added = appState.currentDeckInCreation.addCard(newCard);
+                    // If a card is successfully added to the deck, render it in the preview
+                    if (added) {
+                        // Create a new card component with the new values
+                        const newPreview = document.createElement("card-preview");
+                        newPreview.setAttribute("data-front-text", frontText);
+                        newPreview.setAttribute("data-back-text", backText);
+                        newPreview.setAttribute("data-time", timeNum);
+                        // Render it in the DOM
+                        cardList.appendChild(newPreview);
+                        // Reset form values
+                        front.value = "";
+                        back.value = "";
+                        time.value = "";
+
+                        try {
+                            await saveDeck(appState.currentDeckInCreation);
+                            console.log(
+                                `Deck "${appState.currentDeckInCreation.deckName}" saved after adding card.`
+                            );
+                        } catch (error) {
+                            console.error("Error saving deck after adding card:", error);
+                            alert("Error saving deck. Changes may not be persisted.");
+                        }
+                    } else {
+                        alert("Failed to add card to deck (internal validation).");
+                    }
+            }
             } else {
                 alert(
                     "Invalid card details. Please check inputs:\n- Front: 1-60 chars\n- Back: 1-250 chars\n- Time: 1-60 secs"
@@ -209,6 +261,7 @@ function init() {
         async function handleSaveDeckAndGoHome() {
             if (appState.currentDeckInCreation && appState.currentDeckInCreation.deckName) {
                 if (appState.currentDeckInCreation.cards.length === 0) {
+                    // TODO: Use dialog tag instead
                     const modal = document.createElement("confirmation-modal");
 
                     // Add modal to DOM so it can be displayed
@@ -247,8 +300,57 @@ function init() {
                 return; // Don't navigate or clear events
             }
 
-            clearEvents();
-            initHome(); // This will reload decks from DB, including the new one
+            swapToPrevScreen(); // Go back to the previous screen you came from (either home or deck screen)
+        }
+
+        /**
+         * Deletes the card from the deck
+         * @param {Event} event The event that triggered this function (should be "delete-card")
+         */
+        async function deleteCard(event) {
+            const index = getIndexInDOM(event.detail);
+            const deleted = appState.currentDeckInCreation.deleteCard(index);
+            if (deleted) {
+                cardList.removeChild(cardList.children[index]);
+                await saveDeck(appState.currentDeckInCreation);
+            }
+        }
+
+        /**
+         * Sets the existing values in the form and sets the editingState to be the index of the card to edit
+         * @param {Event} event The event that triggered this function (should be "edit-card");
+         */
+        function editCard(event) {
+            const index = getIndexInDOM(event.detail);
+            const card = appState.currentDeckInCreation.readCard(index);
+            if (card) {
+                if (editingState !== -1 && editingState !== index) {
+                    cardList.children[editingState].classList.remove("selected");
+                }
+                cardList.children[index].classList.add("selected");
+                front.value = card.frontText;
+                back.value = card.backText;
+                time.value = card.time;
+                editingState = index;
+            }
+        }
+
+        /**
+         * Loads existing cards when editing an existing deck
+         */
+        function initExistingCards() {
+            if (appState.currentDeckInCreation !== null) {
+                let index = 0;
+                for (const card of appState.currentDeckInCreation.cards) {
+                    const newPreview = document.createElement("card-preview");
+                    newPreview.setAttribute("data-front-text", card.frontText);
+                    newPreview.setAttribute("data-back-text", card.backText);
+                    newPreview.setAttribute("data-time", card.time);
+                    newPreview.setAttribute("data-card-index", index);
+                    cardList.appendChild(newPreview);
+                    index++;
+                }
+            }
         }
 
         /**
@@ -256,13 +358,16 @@ function init() {
          */
         function clearEvents() {
             // Remove event listeners
-            if (speechForm) speechForm.removeEventListener("submit", handleDeckNameSubmit);
+            if (speechForm) { speechForm.removeEventListener("submit", handleDeckNameSubmit) };
 
             // Remove card form event listener
-            if (cardForm) cardForm.removeEventListener("submit", handleCardSubmit);
+            if (cardForm) { cardForm.removeEventListener("submit", handleCardSubmit) };
 
             // Remove save button event listener
-            if (saveBtn) saveBtn.removeEventListener("click", handleSaveDeckAndGoHome);
+            if (saveBtn) { saveBtn.removeEventListener("click", handleSaveDeckAndGoHome) };
+
+            cardList.removeEventListener("edit-card", editCard);
+            cardList.removeEventListener("delete-card", deleteCard);
 
             // Reset the current deck in creation
             appState.currentDeckInCreation = null;
@@ -275,51 +380,60 @@ function init() {
     function initExisting() {
         // Add functionality to swap to existing decks screen
         flashcardApp.replaceChildren();
-        const existingDecksScreen = document.createElement("div"); // TODO: Use custom element
-        existingDecksScreen.id = "existing-decks-screen";
-        existingDecksScreen.innerHTML = `
-            <h2>Your Decks</h2>
-            <div id="deckListContainer"></div>
-            <button id="backToHomeBtn">Back to Home</button>
-        `;
+        const existingDecksScreen = document.createElement("existing-screen");
+        
         flashcardApp.appendChild(existingDecksScreen);
 
-        const deckListContainer = existingDecksScreen.querySelector("#deckListContainer");
-        const backToHomeBtn = existingDecksScreen.querySelector("#backToHomeBtn");
+        // Get references to elements in existing decks screen
+        const deckListContainer = existingDecksScreen.querySelector("#deck-list-container");
+        const backToHomeBtn = existingDecksScreen.querySelector("#back-button");
 
-        backToHomeBtn.addEventListener("click", () => {
-            initHome();
-        });
+        // Add event listeners
+        backToHomeBtn.addEventListener("click", swapToHome);
 
+        // Add existing decks to the deck list
         if (Object.keys(appState.decks).length === 0) {
-            deckListContainer.innerHTML =
-                "<p>No decks found. Go to the home screen to create one!</p>";
+            deckListContainer.innerHTML = `
+                <p>There are no decks yet. Please create one.</p>
+            `;
         } else {
-            const ul = document.createElement("ul");
             for (const deckName in appState.decks) {
-                const deck = appState.decks[deckName];
-                const li = document.createElement("li");
-                li.textContent = `${deck.deckName} (${deck.cards.length} cards)`;
-                li.style.cursor = "pointer";
-                li.dataset.deckName = deckName;
-
-                li.addEventListener("click", (e) => {
-                    const selectedDeckName = e.currentTarget.dataset.deckName;
-                    initDeckViewScreen(selectedDeckName);
-                });
-                ul.appendChild(li);
+                const deck = appState.decks[deckName]
+                const deckPreview = document.createElement("deck-preview");
+                deckPreview.setAttribute("data-deck-name", deck.deckName);
+                deckPreview.setAttribute("data-deck-length", deck.cards.length);
+                deckListContainer.appendChild(deckPreview);
             }
-            deckListContainer.appendChild(ul);
+        }
+
+        deckListContainer.addEventListener("deck-select", initDeckViewScreen);
+
+        /**
+         * Swap to the home screen from the existing deck screen, clears event listeners for elements in the existing deck screen
+         */
+        function swapToHome() {
+            appState.previousScreen = "existing";
+            clearEvents();
+            initHome();
+        }
+        
+        /**
+         * Remove event listeners from the deck creation screen to prevent memory leaks
+         */
+        function clearEvents() {
+            // Remove event listeners
+            backToHomeBtn.removeEventListener("click", swapToHome);
         }
     }
 
     /**
      * Initialize and swap to the screen for viewing/managing a single deck.
-     * @param {string} deckName The name of the deck to view.
+     * @param {Event} event Should be a custom event "deck-select" with a detail key containing the values of the deck name
      */
-    async function initDeckViewScreen(deckName) {
+    async function initDeckViewScreen(event) {
+        const deckName = event.detail;
         const deckToView = appState.decks[deckName];
-
+        // TODO: Replace alert
         if (!deckToView) {
             console.error(`Deck "${deckName}" not found in appState.`);
             alert("Error: Could not load the selected deck.");
@@ -328,189 +442,99 @@ function init() {
         }
 
         flashcardApp.replaceChildren();
-        // You could use a custom element like <deck-view-screen> if you prefer
-        const deckViewContainer = document.createElement("div");
-        deckViewContainer.id = "deck-view-screen";
-        deckViewContainer.innerHTML = `
-                <header class="deck-view-header">
-                    <h2 id="deckViewName"></h2>
-                    <div class="deck-actions">
-                        <button id="studyDeckBtn" class="button">Study Deck</button>
-                        <button id="editDeckBtn" class="button">Edit Deck Info</button> 
-                        <button id="addCardToDeckBtn" class="button">Add New Card</button>
-                        <button id="backToDecksBtn" class="button">Back to Decks List</button>
-                    </div>
-                </header>
-                <div id="cardDisplayArea" class="cards-grid">
-                    <!-- Cards will be populated here -->
-                </div>
-            `;
+        const deckViewContainer = document.createElement("deck-screen");
+        deckViewContainer.setAttribute("data-deck-name", deckName);
         flashcardApp.appendChild(deckViewContainer);
 
-        const deckViewNameEl = deckViewContainer.querySelector("#deckViewName");
-        const cardDisplayArea = deckViewContainer.querySelector("#cardDisplayArea");
-        const studyDeckBtn = deckViewContainer.querySelector("#studyDeckBtn");
-        const editDeckBtn = deckViewContainer.querySelector("#editDeckBtn");
-        const addCardToDeckBtn = deckViewContainer.querySelector("#addCardToDeckBtn");
-        const backToDecksBtn = deckViewContainer.querySelector("#backToDecksBtn");
+        // Get references to the buttons
+        const cardDisplayArea = deckViewContainer.querySelector(".card-list");
+        const studyDeckBtn = deckViewContainer.querySelector(".study-btn");
+        const editDeckBtn = deckViewContainer.querySelector(".edit-btn");
+        const backToDecksBtn = deckViewContainer.querySelector(".back-btn");
 
-        deckViewNameEl.textContent = deckToView.deckName;
-
-        // --- Populate Cards ---
+        // Populate Cards
         if (deckToView.cards.length === 0) {
             cardDisplayArea.innerHTML = "<p>This deck has no cards yet. You can add some!</p>";
         } else {
             deckToView.cards.forEach((card, index) => {
-                const cardItemWrapper = document.createElement("div");
-                cardItemWrapper.className = "deck-card-item";
-
-                const cardPreviewInstance = document.createElement("card-preview");
-                cardPreviewInstance.setAttribute("data-front-text", card.frontText);
-                cardPreviewInstance.setAttribute("data-back-text", card.backText);
+                const deckCard = document.createElement("card-preview");
+                deckCard.setAttribute("data-front-text", card.frontText);
+                deckCard.setAttribute("data-back-text", card.backText);
+                deckCard.setAttribute("data-card-index", index);
                 if (card.time !== undefined) {
-                    cardPreviewInstance.setAttribute("data-time", String(card.time));
+                    deckCard.setAttribute("data-time", String(card.time));
                 }
-
-                // Add the preview to the wrapper
-                cardItemWrapper.appendChild(cardPreviewInstance);
-                const actionsDiv = document.createElement("div");
-                actionsDiv.className = "card-item-actions";
-                actionsDiv.innerHTML = `
-            <button class="edit-card-btn button-small" data-card-index="${index}">Edit</button>
-            <button class="delete-card-btn button-small danger" data-card-index="${index}">Delete</button>
-        `;
-                cardItemWrapper.appendChild(actionsDiv);
-
-                cardDisplayArea.appendChild(cardItemWrapper);
+                cardDisplayArea.appendChild(deckCard);
             });
         }
 
-        // --- Event Listeners for Deck View Screen ---
-        backToDecksBtn.addEventListener("click", () => {
+        // Add event listeners
+        backToDecksBtn.addEventListener("click", swapToExisting);
+        studyDeckBtn.addEventListener("click", initStudy);
+        editDeckBtn.addEventListener("click", editDeck);
+        cardDisplayArea.addEventListener("delete-card", deleteCard);
+        cardDisplayArea.addEventListener("edit-card", editCard);
+
+        /**
+         * Sets the current deck to let initCreate() know to use the existing deck instead of creating a new one, clear event listeners, and swap to the create deck screen.
+         */
+        function editDeck() {
+            appState.previousScreen = "deck";
+            appState.currentDeckInCreation = deckToView;
+            clearEvents();
+            initCreate();
+        }
+
+        /**
+         * Deletes a card from a deck and removes the corresponding element from the DOM
+         * @param {Event} event The event that triggered this function (should be "delete-card" event)
+         */
+        async function deleteCard(event) {
+            const index = getIndexInDOM(event.detail);
+            // TODO: Dialog confirmation
+            const deleted = deckToView.deleteCard(index);
+            if (deleted) {
+                cardDisplayArea.removeChild(cardDisplayArea.children[index]);
+                await saveDeck(deckToView);
+            }
+        }
+
+        function editCard(event) {
+            appState.previousScreen = "deck";
+            appState.currentDeckInCreation = deckToView;
+            const index = getIndexInDOM(event.detail);
+            if (index !== -1) {
+                clearEvents();
+                initCreate(index);
+            }
+        }
+
+        /**
+         * Clear event listeners before swapping to the existing deck screen
+         */
+        function swapToExisting() {
+            appState.previousScreen = "deck";
+            clearEvents();
             initExisting();
-        });
-
-        studyDeckBtn.addEventListener("click", () => {
-            // TODO: Implement the logic to study the deck
-            alert(`Studying deck: ${deckToView.deckName} - Feature to be implemented!`);
-        });
-
-        editDeckBtn.addEventListener("click", () => {
-            // TODO: Implement the logic to edit the deck name
-            // Right now is very simple and cheap and generated by GPT
-            // Allow editing deck name. Might reuse part of CreateScreen logic or a small modal.
-            const newDeckName = prompt("Enter new deck name:", deckToView.deckName);
-            if (newDeckName && newDeckName.trim() !== "" && newDeckName !== deckToView.deckName) {
-                const oldDeckName = deckToView.deckName;
-                // Validate newDeckName (length, etc.) as in Deck creation
-                if (newDeckName.length > 0 && newDeckName.length <= 60) {
-                    if (appState.decks[newDeckName]) {
-                        alert(
-                            "A deck with this name already exists. Please choose a different name."
-                        );
-                        return;
-                    }
-
-                    deckToView.deckName = newDeckName.trim();
-                    deckViewNameEl.textContent = deckToView.deckName;
-
-                    (async () => {
-                        try {
-                            await deleteDeckDB(oldDeckName); // Delete the deck by its old name
-                            delete appState.decks[oldDeckName]; // Remove from in-memory cache
-
-                            await saveDeck(deckToView); // Save the deck with its new name
-                            appState.decks[deckToView.deckName] = deckToView; // Add to in-memory cache with new name
-
-                            console.log(
-                                `Deck name changed from "${oldDeckName}" to "${deckToView.deckName}" and saved.`
-                            );
-                            // The current screen is now showing the deck under its new name.
-                            // If we go back to deck list, it should reflect this.
-                        } catch (error) {
-                            console.error("Error updating deck name:", error);
-                            alert("Error updating deck name. Reverting changes locally.");
-                            // Revert local changes if DB operations failed
-                            deckToView.deckName = oldDeckName;
-                            deckViewNameEl.textContent = deckToView.deckName;
-                            appState.decks[oldDeckName] = deckToView;
-                            if (appState.decks[newDeckName.trim()])
-                                delete appState.decks[newDeckName.trim()];
-                        }
-                    })();
-                } else {
-                    alert("Invalid deck name. Must be between 1 and 60 characters.");
-                }
-            }
-        });
-
-        addCardToDeckBtn.addEventListener("click", () => {
-            // TODO: Implement the logic to add a new card to the deck
-            alert("Add card to deck button clicked");
-        });
-
-        // Event delegation for card edit/delete buttons
-        cardDisplayArea.addEventListener("click", async (event) => {
-            const target = event.target;
-            const cardIndex = target.dataset.cardIndex;
-
-            if (target.classList.contains("edit-card-btn") && cardIndex !== undefined) {
-                handleEditCard(deckToView, parseInt(cardIndex));
-            } else if (target.classList.contains("delete-card-btn") && cardIndex !== undefined) {
-                handleDeleteCard(deckToView, parseInt(cardIndex));
-            }
-        });
-    }
-
-    /**
-     * Handles editing a specific card within a deck.
-     * @param {object} deck The deck object.
-     * @param {number} cardIndex The index of the card to edit.
-     */
-    async function handleEditCard(deck, cardIndex) {
-        const card = deck.cards[cardIndex];
-        if (!card) return;
-
-        // TODO: use a modal for the edit card
-        const newFront = prompt("Enter new front text:", card.frontText);
-        if (newFront === null) return; // User cancelled
-
-        const newBack = prompt("Enter new back text:", card.backText);
-        if (newBack === null) return; // User cancelled
-
-        const newTimeStr = prompt("Enter new time (seconds):", card.time);
-        if (newTimeStr === null) return; // User cancelled
-        const newTime = Number(newTimeStr);
-
-        // Validate the new card data
-        const tempEditedCard = Card(newFront, newBack, newTime);
-        if (!tempEditedCard) {
-            alert("Invalid card data. Please check your inputs.");
-            return;
         }
 
-        // Update the card in the deck's card array
-        deck.updateCard(cardIndex, tempEditedCard);
-
-        try {
-            // Save the entire deck with the updated card
-            await saveDeck(deck);
-            console.log(
-                `Card at index ${cardIndex} in deck "${deck.deckName}" updated and deck saved.`
-            );
-            // Re-render this deck view to show changes
-            initDeckViewScreen(deck.deckName);
-        } catch (error) {
-            console.error("Error saving deck after editing card:", error);
-            alert("Failed to save card changes.");
+        /**
+         * Clears events for elements in the deck view screen
+         */
+        function clearEvents() {
+            backToDecksBtn.removeEventListener("click", initExisting);
+            studyDeckBtn.removeEventListener("click", initStudy);
+            editDeckBtn.removeEventListener("click", editDeck);
+            cardDisplayArea.removeEventListener("delete-card", deleteCard);
+            cardDisplayArea.removeEventListener("edit-card", editCard);
         }
     }
 
     /**
+     * TO BE REMOVED (POSSIBLY)
      * Handles deleting a specific card from a deck.
      * @param {object} deck The deck object.
      * @param {number} cardIndex The index of the card to delete.
-     */
     async function handleDeleteCard(deck, cardIndex) {
         const card = deck.cards[cardIndex];
         if (!card) return;
@@ -543,4 +567,26 @@ function init() {
             alert("Failed to save changes after deleting card.");
         }
     }
+    */
+
+    function initStudy() {
+        // TODO: Implement study screen
+    }
+}
+
+/**
+ * Gets the index of an HTML element within its parent (i.e. the 5th child of its parent)
+ * @param {HTMLElement} el An HTML element 
+ * @returns The index of el or -1 if not found
+ */
+function getIndexInDOM(el) {
+    const parent = el.parentElement;
+    let count = 0;
+    for (const child of parent.children) {
+        if (child === el) {
+            return count;
+        }
+        count++;
+    }
+    return -1;
 }

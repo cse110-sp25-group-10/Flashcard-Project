@@ -35,6 +35,7 @@ class CreateScreen extends HTMLElement {
             </form>
 
             <output class="flash-card-list-container"></output>
+            <br>
             <button type="button" id="back-button">Back</button>
         `;
     }
