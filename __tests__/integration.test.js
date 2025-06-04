@@ -20,22 +20,127 @@ test("creates a Deck and saves it to the database", async () => {
     // also expect for the actual deck but have deckName only for now until it is imported correctly
 });
 
-test("creates a Deck and saves it to the database", async () => {
+// not done (test the function that gets all decks)
+test("creates a multiple Decks and saves it to the database", async () => {
     const whalesDeck = Deck("Whales");
     const whalesCard1 = Card("What are whales?", "Whales are a marine mammal.", 10);
     const whalesCard2 = Card("Habitat", "They live in the ocean.", 15);
     const whalesCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
-    deck.addCard(whalesCard1);
-    deck.addCard(whalesCard2);
-    deck.addCard(whalesCard3);
+    whalesDeck.addCard(whalesCard1);
+    whalesDeck.addCard(whalesCard2);
+    whalesDeck.addCard(whalesCard3);
 
     const tigersDeck = Deck("Tigers");
     const tigerCard1 = Card("What are tigers?", "Tigers are a land mammal.", 10);
     const tigerCard2 = Card("Habitat", "They live in the rainforests.", 15);
     const tigerCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
-    deck.addCard(tigerCard1);
-    deck.addCard(tigerCard2);
-    deck.addCard(tigerCard3);
+    tigersDeck.addCard(tigerCard1);
+    tigersDeck.addCard(tigerCard2);
+    tigersDeck.addCard(tigerCard3);
+
+
+
+    await saveDeck(whalesDeck);
+    await saveDeck(tigersDeck);
+
+
+    // const savedDeck = await getDeck(deck.deckName);
+    // expect(savedDeck.deckName).toStrictEqual(deck.deckName);
+    // also expect for the actual deck but have deckName only for now until it is imported correctly
+});
+
+// not done
+test("creates a multiple Decks and deletes one of them", async () => {
+    const whalesDeck = Deck("Whales");
+    const whalesCard1 = Card("What are whales?", "Whales are a marine mammal.", 10);
+    const whalesCard2 = Card("Habitat", "They live in the ocean.", 15);
+    const whalesCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
+    whalesDeck.addCard(whalesCard1);
+    whalesDeck.addCard(whalesCard2);
+    whalesDeck.addCard(whalesCard3);
+
+    const tigersDeck = Deck("Tigers");
+    const tigerCard1 = Card("What are tigers?", "Tigers are a land mammal.", 10);
+    const tigerCard2 = Card("Habitat", "They live in the rainforests.", 15);
+    const tigerCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
+    tigersDeck.addCard(tigerCard1);
+    tigersDeck.addCard(tigerCard2);
+    tigersDeck.addCard(tigerCard3);
+
+    await saveDeck(whalesDeck);
+    await saveDeck(tigersDeck);
+
+
+    // const savedDeck = await getDeck(deck.deckName);
+    // expect(savedDeck.deckName).toStrictEqual(deck.deckName);
+    // also expect for the actual deck but have deckName only for now until it is imported correctly
+});
+
+// not done 
+test("creates and saves deck with same name", async () => {
+    const whalesDeck = Deck("Whales");
+    const whalesCard1 = Card("What are whales?", "Whales are a marine mammal.", 10);
+    const whalesCard2 = Card("Habitat", "They live in the ocean.", 15);
+    const whalesCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
+    whalesDeck.addCard(whalesCard1);
+    whalesDeck.addCard(whalesCard2);
+    whalesDeck.addCard(whalesCard3);
+    await saveDeck(whalesDeck);
+
+    const duplicateDeck = Deck("Whales");
+    const duplicateCard = Card("No whales", "There should be no cards about whales here", 10);
+    duplicateDeck.addCard(duplicateCard);
+    await saveDeck(duplicateDeck);
+
+    // const savedDeck = await getDeck(deck.deckName);
+    // expect(savedDeck.deckName).toStrictEqual(deck.deckName);
+    // also expect for the actual deck but have deckName only for now until it is imported correctly
+});
+
+// not done
+test("updates one of the decks by adding one card to it", async () => {
+    const whalesDeck = Deck("Whales");
+    const whalesCard1 = Card("What are whales?", "Whales are a marine mammal.", 10);
+    const whalesCard2 = Card("Habitat", "They live in the ocean.", 15);
+    const whalesCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
+    whalesDeck.addCard(whalesCard1);
+    whalesDeck.addCard(whalesCard2);
+    whalesDeck.addCard(whalesCard3);
+
+    const tigersDeck = Deck("Tigers");
+    const tigerCard1 = Card("What are tigers?", "Tigers are a land mammal.", 10);
+    const tigerCard2 = Card("Habitat", "They live in the rainforests.", 15);
+    const tigerCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
+    tigersDeck.addCard(tigerCard1);
+    tigersDeck.addCard(tigerCard2);
+    tigersDeck.addCard(tigerCard3);
+
+    await saveDeck(whalesDeck);
+    await saveDeck(tigersDeck);
+
+
+    // const savedDeck = await getDeck(deck.deckName);
+    // expect(savedDeck.deckName).toStrictEqual(deck.deckName);
+    // also expect for the actual deck but have deckName only for now until it is imported correctly
+});
+
+// not done
+test("changes title of one of the decks", async () => {
+    const whalesDeck = Deck("Whales");
+    const whalesCard1 = Card("What are whales?", "Whales are a marine mammal.", 10);
+    const whalesCard2 = Card("Habitat", "They live in the ocean.", 15);
+    const whalesCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
+    whalesDeck.addCard(whalesCard1);
+    whalesDeck.addCard(whalesCard2);
+    whalesDeck.addCard(whalesCard3);
+
+    const tigersDeck = Deck("Tigers");
+    const tigerCard1 = Card("What are tigers?", "Tigers are a land mammal.", 10);
+    const tigerCard2 = Card("Habitat", "They live in the rainforests.", 15);
+    const tigerCard3 = Card("Food they eat", "Whales like to eat krill and plankton", 20);
+    tigersDeck.addCard(tigerCard1);
+    tigersDeck.addCard(tigerCard2);
+    tigersDeck.addCard(tigerCard3);
 
     await saveDeck(whalesDeck);
     await saveDeck(tigersDeck);
