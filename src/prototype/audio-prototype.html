@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Voice recorder test</h1>
+    <p>This is a demo for the voice record function.</p>
+
+    <voice-recorder></voice-recorder>
+
+    <script>
+        const request = indexedDB.open('voiceRecorderDB', 1);
+
+        request.onupgradeneeded = function(event){
+            const db = event.target.result;
+
+            // Create an object store for recordings if it doesn't exist
+            if (!db.objectStoreNames.contains('recordings')) {
+                db.createObjectStore('recordings', { keyPath: 'id', autoIncrement: true });
+            }
+
+        }
+
+        request.onsuccess = function(event) {
+            const db = event.target.result;
+            console.log('Database opened successfully:', db);
+        };
+
+        request.onerror = function(event) {
+            console.error('Database error:', event.target.error);
+        };
+        /*         
+        * This is a simple voice recorder component using Web Components.
+        * It allows users to start and stop recording audio, and plays back the recorded audio.
+        * The recorded audio is stored in a Blob object.
+         */
+        class VoiceRecorder extends HTMLElement {
+            constructor() {
+                super();
+
+            }
+
+            connectedCallback() {
+                this.innerHTML = `
+                    <button id="recordButton">Start Recording</button>
+                    <button id="stopButton" disabled>Stop Recording</button>
+                    <audio id="audioElement" controls></audio>
+                `;
+
+                this.recordButton = this.querySelector('#recordButton');
+                this.stopButton = this.querySelector('#stopButton');
+                this.audioElement = this.querySelector('#audioElement');
+
+                this.chunks = [];
+                this.mediaRecorder = null;
+
+                this.recordButton.addEventListener('click', () => this.startRecording());
+                this.stopButton.addEventListener('click', () => this.stopRecording());
+
+                this.loadlatestRecording();
+            }
+
+            /*            
+             * Saves the recorded audio Blob to IndexedDB.
+             * This function is called when the recording is stopped.
+             * It stores the audio data in an object store named 'recordings'.
+             */
+            saveRecording(blob) {
+                const dbRequest = indexedDB.open('voiceRecorderDB', 1);
+                dbRequest.onsuccess = function(event) {
+                    const db = event.target.result;
+                    const transaction = db.transaction('recordings', 'readwrite');
+                    const store = transaction.objectStore('recordings');
+                    store.add({ audio: blob });
+                    console.log('Recording saved to IndexedDB');
+                };
+                dbRequest.onerror = function(event) {
+                    console.error('Error saving recording:', event.target.error);
+                };
+            }
+
+
+            /*            
+             * Starts the recording process.
+             * It requests access to the user's microphone and initializes the MediaRecorder.
+             * The recorded audio data is stored in chunks.
+             * This function can be implemented directly to the project
+             */
+            async startRecording() {
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    console.error('getUserMedia is not supported on your browser.');
+                    return;
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.mediaRecorder = new MediaRecorder(stream);
+
+                //the way that this voice recorder works is that it stores the audio data in chunks and pushes them to an array.
+                this.mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        this.chunks.push(event.data);
+                    }
+                };
+
+                this.mediaRecorder.onstop = () => {
+                    const blob = new Blob(this.chunks, { type: 'audio/webm' }); //blob that will be inserted to indexeddb later on
+                    const url = URL.createObjectURL(blob);
+                    this.audioElement.src = url;
+                    this.chunks = [];
+
+                    this.saveRecording(blob); // Save the recording to IndexedDB
+                };
+
+
+                this.mediaRecorder.start();
+                this.recordButton.disabled = true;
+                this.stopButton.disabled = false;
+            }
+
+            /*            
+             * Stops the recording process.
+             * It stops the MediaRecorder and resets the buttons.
+             */
+            stopRecording() {
+                if (this.mediaRecorder) {
+                    this.mediaRecorder.stop();
+                    this.recordButton.disabled = false;
+                    this.stopButton.disabled = true;
+                }
+            }
+
+            /*            
+             * Loads the latest recording from IndexedDB and plays it.
+             * This function retrieves the last recorded audio from the database and sets it as the source of the audio element.
+             */
+             loadlatestRecording() {
+                const dbRequest = indexedDB.open('voiceRecorderDB', 1);
+                dbRequest.onsuccess = (event) => {
+                    const db = event.target.result;
+                    const transaction = db.transaction('recordings', 'readonly');
+                    const store = transaction.objectStore('recordings');
+
+                    const getAllRequest = store.getAll();
+
+                    getAllRequest.onsuccess = (event) => {
+                        const recordings = getAllRequest.result;
+                        if (recordings.length > 0) {
+                            const latestRecording = recordings[recordings.length - 1];
+                            const blob = latestRecording.audio;
+                            const url = URL.createObjectURL(blob);
+                            this.audioElement.src = url;
+                        } else {
+                            console.log('No recordings found.');
+                        }
+                    };
+
+                    getAllRequest.onerror = (event) => {
+                        console.error('Error retrieving recordings:', event.target.error);
+                    };
+                };
+
+                dbRequest.onerror = (event) => {
+                    console.error('Error opening database:', event.target.error);
+                };
+            }           
+        }
+
+        customElements.define('voice-recorder', VoiceRecorder);
+
+    </script>
+    <noscript>
+        <p>This text is displayed if JavaScript is disabled.</p>
+    </noscript>
+</body>
+</html>
