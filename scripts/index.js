@@ -3,6 +3,7 @@ import "./screens/ExistingScreen.js";
 import "./components/CardPreview.js";
 import "./components/DeckPreview.js";
 import "./screens/DeckScreen.js";
+import "./screens/StudyScreen.js";
 import { Deck, Card } from "./deck.js";
 import { saveDeck, getAllDecks, deleteDeckDB } from "./database.js";
 
@@ -21,7 +22,7 @@ function init() {
         console.error("Flashcard app container not found!");
         return;
     }
-    
+
     initExisting();
 
     /**
@@ -31,7 +32,7 @@ function init() {
         // Add functionality to swap to existing decks screen
         flashcardApp.replaceChildren();
         const existingDecksScreen = document.createElement("existing-screen");
-        
+
         flashcardApp.appendChild(existingDecksScreen);
 
         // Load all decks from the database
@@ -65,7 +66,7 @@ function init() {
             `;
         } else {
             for (const deckName in appState.decks) {
-                const deck = appState.decks[deckName]
+                const deck = appState.decks[deckName];
                 const deckPreview = document.createElement("deck-preview");
                 deckPreview.setAttribute("data-deck-name", deck.deckName);
                 deckPreview.setAttribute("data-deck-length", deck.cards.length);
@@ -80,6 +81,7 @@ function init() {
         editBtn.addEventListener("click", editDeck);
         createBtn.addEventListener("click", createDeck);
         deleteBtn.addEventListener("click", deleteDeck);
+        studyBtn.addEventListener("click", initStudy);
 
         let selectedIndex = -1;
 
@@ -87,7 +89,7 @@ function init() {
             try {
                 if (selectedIndex !== -1) {
                     deckListContainer.children[selectedIndex].classList.remove("selected");
-                }   
+                }
                 // Remove disabled attribute when decks are selected
                 studyBtn.removeAttribute("disabled");
                 editBtn.removeAttribute("disabled");
@@ -99,8 +101,8 @@ function init() {
                 selectedIndex = getIndexInDOM(elementNode);
                 appState.currentDeckInCreation = appState.decks[deckName];
             } catch {
-                throw new Error("Function selectDeck was triggered without the appropriate event.")
-            }        
+                throw new Error("Function selectDeck was triggered without the appropriate event.");
+            }
         }
 
         function editDeck() {
@@ -133,7 +135,48 @@ function init() {
             deckListContainer.removeEventListener("deck-select", selectDeck);
             editBtn.removeEventListener("click", editDeck);
             createBtn.removeEventListener("click", createDeck);
+            deleteBtn.removeEventListener("click", deleteDeck);
+            studyBtn.removeEventListener("click", initStudy);
         }
+    }
+
+    /**
+     * Swap to the study screen.
+     */
+    function initStudy() {
+        if (!appState.currentDeckInCreation) {
+            console.error("No deck selected to study.");
+            return;
+        }
+
+        // The clearEvents function is called from within initExisting()
+        // We can just call it from here to be safe before swapping screens.
+        // It's safe to call removeEventListener even if the listener isn't there.
+        const existingScreen = flashcardApp.querySelector("existing-screen");
+        if (existingScreen) {
+            const deckListContainer = existingScreen.querySelector(".flash-card-container");
+            const editBtn = existingScreen.querySelector("#edit-speech-button");
+            const createBtn = existingScreen.querySelector("#create-speech-button");
+            const studyBtn = existingScreen.querySelector("#study-button");
+            const deleteBtn = existingScreen.querySelector("#delete-speech-button");
+            // Calling removeEventListener on a null/undefined element would throw an error
+            if (deckListContainer) deckListContainer.removeEventListener("deck-select", () => {});
+            if (editBtn) editBtn.removeEventListener("click", () => {});
+            if (createBtn) createBtn.removeEventListener("click", () => {});
+            if (studyBtn) studyBtn.removeEventListener("click", () => {});
+            if (deleteBtn) deleteBtn.removeEventListener("click", () => {});
+        }
+
+        flashcardApp.replaceChildren();
+        const studyScreen = document.createElement("study-screen");
+
+        // Pass the selected deck object to the study-screen component
+        studyScreen.deck = appState.currentDeckInCreation;
+
+        // Listen for the event to come back to the main screen
+        studyScreen.addEventListener("study-finished", initExisting);
+
+        flashcardApp.appendChild(studyScreen);
     }
 
     /**
@@ -556,7 +599,6 @@ function init() {
         }
     }
 }
-
 
 /**
  * Gets the index of an HTML element within its parent (i.e. the 5th child of its parent)

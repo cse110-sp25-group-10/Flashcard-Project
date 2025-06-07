@@ -1,6 +1,6 @@
 /* || Container Styling */
 create-screen {
-    background-color: rgba(1,1,1,0.75);
+    background-color: rgba(1, 1, 1, 0.75);
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -62,7 +62,7 @@ fieldset {
     box-shadow: 0 0 20px 4px var(--white-transparent);
 }
 
-#customize-card{
+#customize-card {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -70,7 +70,7 @@ fieldset {
     column-gap: 2em;
     height: 100%;
     position: relative;
-    width: 100%;   
+    width: 100%;
 }
 
 .card-textareas {
@@ -92,7 +92,6 @@ fieldset {
     width: 100%;
 }
 
-
 .card-nav-button {
     background-color: var(--white);
     border: solid var(--white);
@@ -104,8 +103,7 @@ fieldset {
     font-size: 1.5em;
     height: 2em;
     text-align: center;
-    width: 2em; 
-    
+    width: 2em;
 }
 
 .previous {
@@ -122,7 +120,7 @@ fieldset {
     color: var(--black);
     border: solid var(--white);
     border-radius: 100%;
-    width: 45px; 
+    width: 45px;
     height: 45px;
     justify-content: center;
     align-items: center;
@@ -185,14 +183,15 @@ fieldset {
     font-family: "Jersey 10", sans-serif;
     font-size: 1.5em;
     font-style: normal;
-    padding: 0.5em;   
+    padding: 0.5em;
 }
 
 #set-time:active {
     box-shadow: 0 0 20px 4px var(--white-transparent);
 }
 
-#upload-card { /* Save & Finish */
+#upload-card {
+    /* Save & Finish */
     align-items: center;
     justify-self: flex-end;
     background-color: var(--white-transparent);
@@ -224,7 +223,7 @@ fieldset {
     color: var(--black);
     border: solid var(--white);
     border-radius: 100%;
-    width: 45px; 
+    width: 45px;
     height: 45px;
     justify-content: center;
     align-items: center;
@@ -240,7 +239,7 @@ fieldset {
     color: var(--black);
     border: solid var(--white);
     border-radius: 100%;
-    width: 45px; 
+    width: 45px;
     height: 45px;
     justify-content: center;
     align-items: center;

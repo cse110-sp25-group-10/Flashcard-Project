@@ -185,21 +185,27 @@ export const Deck = function createDeck(deckName) {
 };
 
 /**
- * Shuffles the cards in a deck
- * @param {Array} deck - The deck of cards
- * @returns True if the deck was shuffled and false otherwise
+ * Shuffles an array using the Fisher-Yates (aka Knuth) Shuffle algorithm.
+ * @param {Array} array The array to shuffle.
+ * @returns {Array} The shuffled array.
  */
-export function shuffleCards(deck) {
-    if (!Array.isArray(deck)) {
+export function shuffleCards(array) {
+    if (!Array.isArray(array)) {
         console.error("Invalid deck for shuffleDeck.");
-        return false;
+        return null;
     }
-    for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        // Swap elements using a temporary variable
-        const temp = deck[i];
-        deck[i] = deck[j];
-        deck[j] = temp;
+
+    let currentIndex = array.length, randomIndex;
+
+    while (currentIndex !== 0) {
+
+        // Pick a remaining element.
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
     }
-    return true;
+    
+    return array;
 }

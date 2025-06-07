@@ -1,5 +1,6 @@
 @import url("preparing_speech.css");
 @import url("deck_selection.css");
+@import url("study_screen.css");
 
 @font-face {
     font-family: "Jersey 10";
@@ -30,9 +31,9 @@
     --light-blue: rgb(176 202 227);
     --lilac: rgb(229 201 228);
     --navy: rgb(19 16 45);
-    --white:  rgb(241 236 254);
+    --white: rgb(241 236 254);
     --white-transparent: rgb(241 236 254 / 80%);
-    --underlay: rgba(1,1,1,0.75);
+    --underlay: rgba(1, 1, 1, 0.75);
 }
 
 * {
